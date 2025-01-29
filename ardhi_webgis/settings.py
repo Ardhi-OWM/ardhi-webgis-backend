@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-9z999-nenw$j^de!8ofji!)ah=2v+cc0mgn@)l4mux@g(1sg0&
 DEBUG = True
 
 # ALLOWED_HOSTS = []
-ALLOWED_HOSTS = ['ardhi_backend.onrender.com']
+ALLOWED_HOSTS = ["ardhi-webgis-backend.onrender.com", "localhost", "127.0.0.1"]
 
 
 
