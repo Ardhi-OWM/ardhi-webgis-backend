@@ -17,6 +17,7 @@ from rest_framework import generics
 from rest_framework.response import Response
 from .models import Input, Subscription
 from .serializers import InputSerializer, SubscriptionSerializer
+from django.http import JsonResponse
 
 class InputListCreateView(generics.ListCreateAPIView):
     serializer_class = InputSerializer
@@ -75,3 +76,7 @@ class SubscriptionDeleteView(generics.DestroyAPIView):
         if user_id:
             return Subscription.objects.filter(user_id=user_id)
         return Subscription.objects.all()
+
+
+def home(request):
+    return JsonResponse({"message": "Welcome to Ardhi WebGIS API"})
