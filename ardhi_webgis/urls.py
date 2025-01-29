@@ -19,6 +19,7 @@ from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
+    path('', home, name='home'),
     path('admin/', admin.site.urls),  # Admin panel
     path('api/', include('ardhi_backend.urls')),  # Include app-specific URLs
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),  # JWT token obtain
