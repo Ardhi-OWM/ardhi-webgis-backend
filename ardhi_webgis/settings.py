@@ -114,6 +114,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
 
+from dotenv import load_dotenv
+# Load environment variables from .env
+load_dotenv()
+
+API_BASE_URL = os.getenv('API_BASE_URL')
+API_KEY = os.getenv('API_KEY')
+
+# Check if they are loaded correctly
+if not API_BASE_URL or not API_KEY:
+    raise ValueError("Missing API_BASE_URL or API_KEY in environment variables")
+
 
 
 

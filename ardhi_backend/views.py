@@ -17,7 +17,24 @@ from rest_framework import generics
 from rest_framework.response import Response
 from .models import Input, Subscription
 from .serializers import InputSerializer, SubscriptionSerializer
+import requests
 from django.http import JsonResponse
+from django.conf import settings
+
+def fetch_external_data(request):
+    """Fetch data from an external API."""
+    url = f"{settings.API_BASE_URL}endpoint/"
+    headers = {"Authorization": f"Bearer {settings.API_KEY}"}
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()  # Raise error for HTTP errors
+        data = response.json()
+        return JsonResponse({"success": True, "data": data}, status=200)
+
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
 
 class InputListCreateView(generics.ListCreateAPIView):
     serializer_class = InputSerializer
