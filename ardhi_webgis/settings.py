@@ -110,19 +110,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Fetch environment variables
-DATABASE_URL = os.getenv("DATABASE_URL")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.getenv("AWS_REGION")
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 API_BASE_URL = os.getenv("API_BASE_URL")
 API_KEY = os.getenv("API_KEY")
-API_SECRET = os.getenv("API_SECRET")
 
-# Check if required variables are missing
-required_vars = ["DATABASE_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "API_BASE_URL", "API_KEY"]
-missing_vars = [var for var in required_vars if not globals()[var]]
-
+# Check for missing variables
+missing_vars = [var for var in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "API_BASE_URL", "API_KEY"] if not os.getenv(var)]
 if missing_vars:
     raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
