@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,7 +31,6 @@ DEBUG = True
 ALLOWED_HOSTS = ["ardhi-webgis-backend.onrender.com", "localhost", "127.0.0.1"]
 
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'ardhi_backend',
     'corsheaders',
 ]
@@ -108,26 +109,35 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Fetch environment variables
+DATABASE_URL = os.getenv("DATABASE_URL")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_REGION")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+API_BASE_URL = os.getenv("API_BASE_URL")
+API_KEY = os.getenv("API_KEY")
+API_SECRET = os.getenv("API_SECRET")
+
+# Check if required variables are missing
+required_vars = ["DATABASE_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "API_BASE_URL", "API_KEY"]
+missing_vars = [var for var in required_vars if not globals()[var]]
+
+if missing_vars:
+    raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+
+
+    
 DATABASES = {
     'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
 }
 
+# import os
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
 
-API_BASE_URL = os.getenv('API_BASE_URL')
-API_KEY = os.getenv('API_KEY')
-
-# Check if they are loaded correctly
-if not API_BASE_URL or not API_KEY:
-    raise ValueError("Missing API_BASE_URL or API_KEY in environment variables")
-
-
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_REGION = os.getenv('AWS_REGION')
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 
 # DO_SPACES_KEY = os.getenv('DO_SPACES_KEY')
 # DO_SPACES_SECRET = os.getenv('DO_SPACES_SECRET')
@@ -184,5 +194,4 @@ CORS_ALLOW_ALL_ORIGINS = True
 #     "http://127.0.0.1:3000",
 # ]
 
-# # Optionally allow all origins (use with caution in production)
-# # CORS_ALLOW_ALL_ORIGINS = True
+
