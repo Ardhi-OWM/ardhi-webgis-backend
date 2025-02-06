@@ -104,19 +104,17 @@ WSGI_APPLICATION = 'ardhi_webgis.wsgi.application'
 
 import dj_database_url
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DATABASES = {
     'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
 }
 
-# import os
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
-
-from dotenv import load_dotenv
-# Load environment variables from .env
-load_dotenv()
 
 API_BASE_URL = os.getenv('API_BASE_URL')
 API_KEY = os.getenv('API_KEY')
@@ -125,6 +123,16 @@ API_KEY = os.getenv('API_KEY')
 if not API_BASE_URL or not API_KEY:
     raise ValueError("Missing API_BASE_URL or API_KEY in environment variables")
 
+
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_REGION = os.getenv('AWS_REGION')
+S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
+
+# DO_SPACES_KEY = os.getenv('DO_SPACES_KEY')
+# DO_SPACES_SECRET = os.getenv('DO_SPACES_SECRET')
+# DO_SPACES_REGION = os.getenv('DO_SPACES_REGION')
+# DO_SPACES_BUCKET = os.getenv('DO_SPACES_BUCKET')
 
 
 

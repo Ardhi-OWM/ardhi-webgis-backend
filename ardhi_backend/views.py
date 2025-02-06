@@ -21,19 +21,80 @@ import requests
 from django.http import JsonResponse
 from django.conf import settings
 
-def fetch_external_data(request):
-    """Fetch data from an external API."""
-    url = f"{settings.API_BASE_URL}endpoint/"
-    headers = {"Authorization": f"Bearer {settings.API_KEY}"}
+import requests
+from django.http import JsonResponse
+from django.conf import settings
+import requests
+import boto3
+from django.http import JsonResponse
+from django.conf import settings
+
+# def fetch_external_data(request):
+#     """Fetch data from an external API (AWS S3 or another service)."""
+#     url = settings.API_BASE_URL.rstrip("/") + "/endpoint/"
+#     headers = {
+#         "Authorization": f"Bearer {settings.API_KEY}",  
+#         "x-api-key": settings.API_KEY,  
+#         "Content-Type": "application/json",
+#     }
+
+#     try:
+#         response = requests.get(url, headers=headers)
+#         response.raise_for_status()  
+#         data = response.json()
+#         return JsonResponse({"success": True, "data": data}, status=200)
+
+#     except requests.exceptions.HTTPError as e:
+#         return JsonResponse({"success": False, "error": f"HTTP Error: {e}"}, status=response.status_code)
+#     except requests.exceptions.RequestException as e:
+#         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+def get_s3_signed_url(request):
+    """
+    Generate a presigned URL for frontend access to a file stored in S3.
+    """
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION,
+    )
+
+    file_key = request.GET.get("file", "default-model.geojson")  # Get file from frontend request
 
     try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise error for HTTP errors
-        data = response.json()
-        return JsonResponse({"success": True, "data": data}, status=200)
+        presigned_url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": settings.S3_BUCKET_NAME, "Key": file_key},
+            ExpiresIn=3600  # Link expires in 1 hour
+        )
 
-    except requests.exceptions.RequestException as e:
+        return JsonResponse({"success": True, "url": presigned_url}, status=200)
+
+    except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+
+# def fetch_model_from_do(request):
+#     """Fetch a model file from DigitalOcean Spaces"""
+#     s3 = boto3.client(
+#         "s3",
+#         aws_access_key_id=settings.DO_SPACES_KEY,
+#         aws_secret_access_key=settings.DO_SPACES_SECRET,
+#         region_name=settings.DO_SPACES_REGION,
+#         endpoint_url=f"https://{settings.DO_SPACES_REGION}.digitaloceanspaces.com",
+#     )
+
+#     file_key = "model/model.pkl"
+
+#     try:
+#         response = s3.get_object(Bucket=settings.DO_SPACES_BUCKET, Key=file_key)
+#         model_data = response['Body'].read()
+#         return JsonResponse({"success": True, "message": "Model retrieved successfully"}, status=200)
+#     except Exception as e:
+#         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
 class InputListCreateView(generics.ListCreateAPIView):
