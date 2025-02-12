@@ -100,7 +100,7 @@ WSGI_APPLICATION = 'ardhi_webgis.wsgi.application'
 #         'ENGINE': 'django.db.backends.postgresql',
 #         'NAME': 'ardhi_db',
 #         'USER': 'ardhi_user',
-#         'PASSWORD': 'ochwuma',F
+#         'PASSWORD': 'ochwuma',
 #         'HOST': 'localhost',
 #         'PORT': '5432',
 #     }
