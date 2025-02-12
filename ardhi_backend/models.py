@@ -25,7 +25,7 @@ class APIEndpoint(models.Model):
     name = models.CharField(max_length=255)
     provider = models.CharField(max_length=255, blank=True, null=True)
     region = models.CharField(max_length=100, blank=True, null=True)
-    apiUrl = models.URLField(unique=True)
+    api_url = models.URLField(unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
