@@ -66,7 +66,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
 ]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 ROOT_URLCONF = 'ardhi_webgis.urls'
 
@@ -97,7 +100,7 @@ WSGI_APPLICATION = 'ardhi_webgis.wsgi.application'
 #         'ENGINE': 'django.db.backends.postgresql',
 #         'NAME': 'ardhi_db',
 #         'USER': 'ardhi_user',
-#         'PASSWORD': 'ochwuma',
+#         'PASSWORD': 'ochwuma',F
 #         'HOST': 'localhost',
 #         'PORT': '5432',
 #     }
@@ -132,6 +135,9 @@ DATABASES = {
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 
 # DO_SPACES_KEY = os.getenv('DO_SPACES_KEY')
