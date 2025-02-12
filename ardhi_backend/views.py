@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.conf import settings
 import requests
 import boto3
+from rest_framework.exceptions import ValidationError
 from .models import Input, Subscription, APIEndpoint
 from .serializers import InputSerializer, SubscriptionSerializer, APIEndpointSerializer
 
@@ -65,15 +66,15 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user_id = self.request.data.get("user_id")
-        if not user_id:
-            return Response({"error": "user_id is required"}, status=400)
+        email = self.request.data.get("email")
 
-        email = serializer.validated_data["email"]
+        if not user_id:
+            raise ValidationError({"error": "user_id is required"})
+
         if Subscription.objects.filter(email=email).exists():
-            return Response({"error": "Email already subscribed"}, status=400)
+            raise ValidationError({"error": "This email is already subscribed."})
 
         serializer.save(user_id=user_id)
-
 
 class APIEndpointViewSet(viewsets.ModelViewSet):
     serializer_class = APIEndpointSerializer
