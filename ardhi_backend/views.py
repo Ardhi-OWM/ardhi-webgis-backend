@@ -76,6 +76,25 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
         serializer.save(user_id=user_id)
 
+# class APIEndpointViewSet(viewsets.ModelViewSet):
+#     serializer_class = APIEndpointSerializer
+#     permission_classes = [AllowAny]
+
+#     def get_queryset(self):
+#         user_id = self.request.query_params.get("user_id")
+#         if user_id:
+#             return APIEndpoint.objects.filter(user_id=user_id)
+#         return APIEndpoint.objects.all()
+
+#     def perform_create(self, serializer):
+#         user_id = self.request.data.get("user_id")
+#         if not user_id:
+#             return Response({"error": "user_id is required"}, status=400)
+
+#         serializer.save(user_id=user_id)
+
+from rest_framework.exceptions import ValidationError
+
 class APIEndpointViewSet(viewsets.ModelViewSet):
     serializer_class = APIEndpointSerializer
     permission_classes = [AllowAny]
@@ -88,8 +107,13 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user_id = self.request.data.get("user_id")
+        api_url = self.request.data.get("api_url")
+
         if not user_id:
-            return Response({"error": "user_id is required"}, status=400)
+            raise ValidationError({"error": "user_id is required"})
+
+        if APIEndpoint.objects.filter(api_url=api_url, user_id=user_id).exists():
+            raise ValidationError({"error": "This API URL is already subscribed."})
 
         serializer.save(user_id=user_id)
 
