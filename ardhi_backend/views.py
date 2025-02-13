@@ -117,6 +117,10 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
 
         serializer.save(user_id=user_id)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 def home(request):
     return JsonResponse({"message": "Welcome to Ardhi WebGIS API"})
