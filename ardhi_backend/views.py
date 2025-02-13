@@ -76,24 +76,6 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
         serializer.save(user_id=user_id)
 
-# class APIEndpointViewSet(viewsets.ModelViewSet):
-#     serializer_class = APIEndpointSerializer
-#     permission_classes = [AllowAny]
-
-#     def get_queryset(self):
-#         user_id = self.request.query_params.get("user_id")
-#         if user_id:
-#             return APIEndpoint.objects.filter(user_id=user_id)
-#         return APIEndpoint.objects.all()
-
-#     def perform_create(self, serializer):
-#         user_id = self.request.data.get("user_id")
-#         if not user_id:
-#             return Response({"error": "user_id is required"}, status=400)
-
-#         serializer.save(user_id=user_id)
-
-from rest_framework.exceptions import ValidationError
 
 class APIEndpointViewSet(viewsets.ModelViewSet):
     serializer_class = APIEndpointSerializer
@@ -118,9 +100,17 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
         serializer.save(user_id=user_id)
 
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        self.perform_destroy(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        api_url = request.data.get("api_url")
+        if not api_url:
+            return Response({"error": "api_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            instance = APIEndpoint.objects.get(api_url=api_url)
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except APIEndpoint.DoesNotExist:
+            return Response({"error": "API Endpoint not found"}, status=status.HTTP_404_NOT_FOUND)
+
 
 def home(request):
     return JsonResponse({"message": "Welcome to Ardhi WebGIS API"})
