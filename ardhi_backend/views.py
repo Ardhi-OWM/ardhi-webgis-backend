@@ -8,6 +8,8 @@ import boto3
 from rest_framework.exceptions import ValidationError
 from .models import Input, Subscription, APIEndpoint
 from .serializers import InputSerializer, SubscriptionSerializer, APIEndpointSerializer
+from rest_framework.decorators import action
+from rest_framework import status
 
 
 def get_s3_signed_url(request):
@@ -76,7 +78,6 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
         serializer.save(user_id=user_id)
 
-
 class APIEndpointViewSet(viewsets.ModelViewSet):
     serializer_class = APIEndpointSerializer
     permission_classes = [AllowAny]
@@ -99,18 +100,18 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
 
         serializer.save(user_id=user_id)
 
-    def destroy(self, request, *args, **kwargs):
+    @action(detail=False, methods=['delete'])
+    def delete_by_api_url(self, request):
         api_url = request.data.get("api_url")
         if not api_url:
             return Response({"error": "api_url is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             instance = APIEndpoint.objects.get(api_url=api_url)
-            self.perform_destroy(instance)
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            instance.delete()
+            return Response({"message": "API Endpoint deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         except APIEndpoint.DoesNotExist:
             return Response({"error": "API Endpoint not found"}, status=status.HTTP_404_NOT_FOUND)
-
 
 def home(request):
     return JsonResponse({"message": "Welcome to Ardhi WebGIS API"})
