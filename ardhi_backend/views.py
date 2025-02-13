@@ -95,10 +95,12 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
         if not user_id:
             raise ValidationError({"error": "user_id is required"})
 
+        # Check for duplicate API URL per user
         if APIEndpoint.objects.filter(api_url=api_url, user_id=user_id).exists():
-            raise ValidationError({"error": "This API URL is already subscribed."})
+            raise ValidationError({"detail": "This API URL already exists for this user."})
 
         serializer.save(user_id=user_id)
+
 
     @action(detail=False, methods=['delete'])
     def delete_by_api_url(self, request):
