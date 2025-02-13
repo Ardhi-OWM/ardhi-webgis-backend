@@ -114,4 +114,4 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
             return Response({"error": "API Endpoint not found"}, status=status.HTTP_404_NOT_FOUND)
 
 def home(request):
-    return JsonResponse({"message": "Welcome to Ardhi WebGIS API"})
+    return JsonResponse({"Welcome to Ardhi WebGIS API"})
