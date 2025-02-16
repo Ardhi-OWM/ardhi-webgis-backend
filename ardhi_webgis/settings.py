@@ -11,11 +11,18 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+
 
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+#BASE_DIR = Path(__file__).resolve().parent.parent
+
+#local
+BASE_DIR=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\django"
+MEDIA_URL ='/media/'
+MEDIA_ROOT=os.path.join(BASE_DIR,'media')
 
 
 # Quick-start development settings - unsuitable for production
@@ -108,10 +115,11 @@ WSGI_APPLICATION = 'ardhi_webgis.wsgi.application'
 
 import dj_database_url
 import os
+import dotenv
 from dotenv import load_dotenv
 
 load_dotenv()
-
+"""""
 # AWS Configuration
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
@@ -125,7 +133,7 @@ missing_vars = [var for var in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "A
 if missing_vars:
     raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
-
+"""
     
 DATABASES = {
     'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))

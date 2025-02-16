@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Input, Subscription, APIEndpoint
+from .models import Input, Subscription, APIEndpoint,UploadedImage
 
 class InputSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,4 +14,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 class APIEndpointSerializer(serializers.ModelSerializer):
     class Meta:
         model = APIEndpoint
-        fields = '__all__'        
+        fields = '__all__'    
+
+class ImageUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= UploadedImage
+        fields=['image']

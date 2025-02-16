@@ -19,6 +19,7 @@ from .views import (
     InputViewSet, 
     SubscriptionViewSet, 
     APIEndpointViewSet,
+    upload_image,
     get_s3_signed_url
 )
 
