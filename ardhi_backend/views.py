@@ -10,6 +10,7 @@ import json
 import csv
 import xml.etree.ElementTree as ET
 from io import StringIO
+from urllib.parse import urlparse
 from rest_framework.exceptions import ValidationError
 from .models import Input, Subscription, APIEndpoint
 from .serializers import InputSerializer, SubscriptionSerializer, APIEndpointSerializer
@@ -29,7 +30,6 @@ def get_s3_signed_url(bucket_name, file_key):
         aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         region_name=settings.AWS_REGION,
     )
-
     try:
         presigned_url = s3.generate_presigned_url(
             "get_object",
@@ -39,7 +39,6 @@ def get_s3_signed_url(bucket_name, file_key):
         return presigned_url
     except Exception as e:
         return str(e)
-
 
 # -----------------------------------
 # ✅ Handle Model Upload, Validation, and Processing
@@ -67,22 +66,12 @@ class InputViewSet(viewsets.ModelViewSet):
             raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
 
         # ✅ Step 1: Determine Cloud Provider (AWS, GCP, DigitalOcean)
-        if "amazonaws.com" in data_link:
-            cloud_provider = "AWS"
-        elif "googleapis.com" in data_link:
-            cloud_provider = "Google Cloud"
-        elif "digitaloceanspaces.com" in data_link:
-            cloud_provider = "DigitalOcean"
-        else:
-            cloud_provider = "Unknown"
-
+        cloud_provider = self.get_cloud_provider(data_link)
+        
         # ✅ Step 2: Validate File Type
-        file_extension = data_link.split(".")[-1].lower()
-        supported_formats = ["json", "geojson", "csv", "xml", "kml", "gpx", "tif", "tiff"]
-        if file_extension not in supported_formats:
-            return Response({"error": "Unsupported file format."}, status=400)
+        file_type = self.get_file_type(data_link)
 
-        # ✅ Step 3: Process Model Data (JSON, GeoJSON, CSV, XML, KML, GPX, TIFF)
+        # ✅ Fetch Processed Data if needed
         processed_data = None
         signed_url = None
 
@@ -91,30 +80,50 @@ class InputViewSet(viewsets.ModelViewSet):
             if response.status_code == 200:
                 file_content = response.text
 
-                if file_extension in ["json", "geojson"]:
+                if file_type in ["json", "geojson"]:
                     processed_data = response.json()
-                elif file_extension == "csv":
+                elif file_type == "csv":
                     processed_data = self.convert_csv_to_geojson(file_content)
-                elif file_extension in ["xml", "kml", "gpx"]:
+                elif file_type in ["xml", "kml", "gpx"]:
                     processed_data = self.convert_xml_to_geojson(file_content)
-                elif file_extension in ["tif", "tiff"]:
+                elif file_type in ["tif", "tiff"]:
                     signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
             else:
-                return Response({"error": "Failed to fetch model from cloud storage."}, status=400)
+                raise ValidationError({"error": "Failed to fetch model from cloud storage."})
         except Exception as e:
-            return Response({"error": f"Error processing file: {str(e)}"}, status=500)
+            raise ValidationError({"error": f"Error processing file: {str(e)}"})
 
-        # ✅ Step 4: Save Processed Data and Metadata in Database
+        # ✅ Save Data to Database
         serializer.save(
             user_id=user_id,
             input_type=input_type,
             data_link=data_link,
             cloud_provider=cloud_provider,
-            file_type=file_extension.upper(),
+            file_type=file_type.upper() if file_type else None,
             processed_data=json.dumps(processed_data) if processed_data else None,
-            signed_url=signed_url,
+            signed_url=signed_url
         )
 
+    def get_cloud_provider(self, url):
+        """ Detects which cloud provider the link belongs to """
+        if "amazonaws.com" in url:
+            return "AWS"
+        elif "googleapis.com" in url:
+            return "Google Cloud"
+        elif "digitaloceanspaces.com" in url:
+            return "DigitalOcean"
+        elif "dropbox.com" in url:
+            return "Dropbox"
+        else:
+            return "Unknown"
+
+    def get_file_type(self, url):
+        """ Extracts file type from the URL """
+        parsed_url = urlparse(url)
+        path = parsed_url.path
+        file_extension = path.split(".")[-1].lower()
+        return file_extension if file_extension else None
+    
     def convert_csv_to_geojson(self, csv_text):
         """
         Convert CSV data into GeoJSON format.
@@ -151,32 +160,24 @@ class InputViewSet(viewsets.ModelViewSet):
                 coordinates = placemark.find(".//{http://www.opengis.net/kml/2.2}coordinates")
                 if coordinates is not None:
                     coords = coordinates.text.strip().split(" ")
-
-                    # 🔹 Convert coordinates into numerical form
                     parsed_coords = [list(map(float, coord.split(",")))[:2] for coord in coords]
 
-                    # 🔹 Determine geometry type
                     if len(parsed_coords) == 1:
                         geometry_type = "Point"
                         geometry_data = {"type": geometry_type, "coordinates": parsed_coords[0]}
-                    elif len(parsed_coords) > 1:
-                        if parsed_coords[0] == parsed_coords[-1]:  # Closed shape = Polygon
-                            geometry_type = "Polygon"
-                            geometry_data = {"type": geometry_type, "coordinates": [parsed_coords]}
-                        else:
-                            geometry_type = "MultiPolygon"
-                            geometry_data = {"type": geometry_type, "coordinates": [[parsed_coords]]}
-
-                    # 🔹 Add feature to GeoJSON
-                    geojson_data["features"].append(
-                        {
-                            "type": "Feature",
-                            "geometry": geometry_data,
-                            "properties": {"name": placemark.findtext(".//{http://www.opengis.net/kml/2.2}name", "")},
-                        }
-                    )
+                    elif parsed_coords[0] == parsed_coords[-1]:
+                        geometry_type = "Polygon"
+                        geometry_data = {"type": geometry_type, "coordinates": [parsed_coords]}
+                    else:
+                        geometry_type = "MultiPolygon"
+                        geometry_data = {"type": geometry_type, "coordinates": [[parsed_coords]]}
+                    
+                    geojson_data["features"].append({
+                        "type": "Feature",
+                        "geometry": geometry_data,
+                        "properties": {"name": placemark.findtext(".//{http://www.opengis.net/kml/2.2}name", "")}
+                    })
             return geojson_data
-
         except Exception as e:
             return {"error": f"Failed to convert XML/KML/GPX: {str(e)}"}
 
