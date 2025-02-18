@@ -1,6 +1,7 @@
 from rest_framework.permissions import AllowAny
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from django.http import JsonResponse
 from django.conf import settings
 import requests
@@ -8,9 +9,6 @@ import boto3
 from rest_framework.exceptions import ValidationError
 from .models import Input, Subscription, APIEndpoint
 from .serializers import InputSerializer, SubscriptionSerializer, APIEndpointSerializer
-from rest_framework.decorators import action
-from rest_framework import status
-
 
 def get_s3_signed_url(request):
     """
@@ -50,8 +48,14 @@ class InputViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user_id = self.request.data.get("user_id")
+        input_type = self.request.data.get("input_type")
+        data_link = self.request.data.get("data_link")
+
         if not user_id:
             return Response({"error": "user_id is required"}, status=400)
+
+        if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
+            raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
 
         serializer.save(user_id=user_id)
 
@@ -78,6 +82,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
         serializer.save(user_id=user_id)
 
+
 class APIEndpointViewSet(viewsets.ModelViewSet):
     serializer_class = APIEndpointSerializer
     permission_classes = [AllowAny]
@@ -101,7 +106,6 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
 
         serializer.save(user_id=user_id)
 
-
     @action(detail=False, methods=['delete'])
     def delete_by_api_url(self, request):
         api_url = request.data.get("api_url")
@@ -114,6 +118,7 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
             return Response({"message": "API Endpoint deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         except APIEndpoint.DoesNotExist:
             return Response({"error": "API Endpoint not found"}, status=status.HTTP_404_NOT_FOUND)
+
 
 def home(request):
     return JsonResponse({"message": "Welcome to Ardhi WebGIS API"})
