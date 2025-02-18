@@ -54,66 +54,66 @@ class InputViewSet(viewsets.ModelViewSet):
             return Input.objects.filter(user_id=user_id)
         return Input.objects.all()
 
-   def perform_create(self, serializer):
-    user_id = self.request.data.get("user_id")
-    input_type = self.request.data.get("input_type")
-    data_link = self.request.data.get("data_link")
+    def perform_create(self, serializer):
+        user_id = self.request.data.get("user_id")
+        input_type = self.request.data.get("input_type")
+        data_link = self.request.data.get("data_link")
 
-    if not user_id:
-        return Response({"error": "user_id is required"}, status=400)
+        if not user_id:
+            return Response({"error": "user_id is required"}, status=400)
 
-    # ✅ Prevent duplicate model uploads for the same user
-    if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
-        raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
+        # ✅ Prevent duplicate model uploads for the same user
+        if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
+            raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
 
-    # ✅ Step 1: Determine Cloud Provider (AWS, GCP, DigitalOcean)
-    if "amazonaws.com" in data_link:
-        cloud_provider = "AWS"
-    elif "googleapis.com" in data_link:
-        cloud_provider = "Google Cloud"
-    elif "digitaloceanspaces.com" in data_link:
-        cloud_provider = "DigitalOcean"
-    else:
-        cloud_provider = "Unknown"
-
-    # ✅ Step 2: Validate File Type
-    file_extension = data_link.split(".")[-1].lower()
-    supported_formats = ["json", "geojson", "csv", "xml", "kml", "gpx", "tif", "tiff"]
-    if file_extension not in supported_formats:
-        return Response({"error": "Unsupported file format."}, status=400)
-
-    # ✅ Step 3: Process Model Data (JSON, GeoJSON, CSV, XML, KML, GPX, TIFF)
-    processed_data = None
-    signed_url = None
-
-    try:
-        response = requests.get(data_link)
-        if response.status_code == 200:
-            file_content = response.text
-
-            if file_extension in ["json", "geojson"]:
-                processed_data = response.json()
-            elif file_extension == "csv":
-                processed_data = self.convert_csv_to_geojson(file_content)
-            elif file_extension in ["xml", "kml", "gpx"]:
-                processed_data = self.convert_xml_to_geojson(file_content)
-            elif file_extension in ["tif", "tiff"]:
-                signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
+        # ✅ Step 1: Determine Cloud Provider (AWS, GCP, DigitalOcean)
+        if "amazonaws.com" in data_link:
+            cloud_provider = "AWS"
+        elif "googleapis.com" in data_link:
+            cloud_provider = "Google Cloud"
+        elif "digitaloceanspaces.com" in data_link:
+            cloud_provider = "DigitalOcean"
         else:
-            return Response({"error": "Failed to fetch model from cloud storage."}, status=400)
-    except Exception as e:
-        return Response({"error": f"Error processing file: {str(e)}"}, status=500)
+            cloud_provider = "Unknown"
 
-    # ✅ Step 4: Save Processed Data and Metadata in Database
-    serializer.save(
-        user_id=user_id,
-        input_type=input_type,
-        data_link=data_link,
-        cloud_provider=cloud_provider,
-        file_type=file_extension.upper(),
-        processed_data=json.dumps(processed_data) if processed_data else None,
-        signed_url=signed_url,
-    )
+        # ✅ Step 2: Validate File Type
+        file_extension = data_link.split(".")[-1].lower()
+        supported_formats = ["json", "geojson", "csv", "xml", "kml", "gpx", "tif", "tiff"]
+        if file_extension not in supported_formats:
+            return Response({"error": "Unsupported file format."}, status=400)
+
+        # ✅ Step 3: Process Model Data (JSON, GeoJSON, CSV, XML, KML, GPX, TIFF)
+        processed_data = None
+        signed_url = None
+
+        try:
+            response = requests.get(data_link)
+            if response.status_code == 200:
+                file_content = response.text
+
+                if file_extension in ["json", "geojson"]:
+                    processed_data = response.json()
+                elif file_extension == "csv":
+                    processed_data = self.convert_csv_to_geojson(file_content)
+                elif file_extension in ["xml", "kml", "gpx"]:
+                    processed_data = self.convert_xml_to_geojson(file_content)
+                elif file_extension in ["tif", "tiff"]:
+                    signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
+            else:
+                return Response({"error": "Failed to fetch model from cloud storage."}, status=400)
+        except Exception as e:
+            return Response({"error": f"Error processing file: {str(e)}"}, status=500)
+
+        # ✅ Step 4: Save Processed Data and Metadata in Database
+        serializer.save(
+            user_id=user_id,
+            input_type=input_type,
+            data_link=data_link,
+            cloud_provider=cloud_provider,
+            file_type=file_extension.upper(),
+            processed_data=json.dumps(processed_data) if processed_data else None,
+            signed_url=signed_url,
+        )
 
 
     def convert_csv_to_geojson(self, csv_text):
