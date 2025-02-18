@@ -140,45 +140,45 @@ class InputViewSet(viewsets.ModelViewSet):
             return {"error": f"Failed to convert CSV: {str(e)}"}
 
     def convert_xml_to_geojson(self, xml_text):
-    """
-    Convert XML/KML/GPX into GeoJSON format, supporting Point, Polygon, and MultiPolygon.
-    """
-    try:
-        root = ET.fromstring(xml_text)
-        geojson_data = {"type": "FeatureCollection", "features": []}
+        """
+        Convert XML/KML/GPX into GeoJSON format, supporting Point, Polygon, and MultiPolygon.
+        """
+        try:
+            root = ET.fromstring(xml_text)
+            geojson_data = {"type": "FeatureCollection", "features": []}
 
-        for placemark in root.findall(".//{http://www.opengis.net/kml/2.2}Placemark"):
-            coordinates = placemark.find(".//{http://www.opengis.net/kml/2.2}coordinates")
-            if coordinates is not None:
-                coords = coordinates.text.strip().split(" ")
+            for placemark in root.findall(".//{http://www.opengis.net/kml/2.2}Placemark"):
+                coordinates = placemark.find(".//{http://www.opengis.net/kml/2.2}coordinates")
+                if coordinates is not None:
+                    coords = coordinates.text.strip().split(" ")
 
-                # 🔹 Convert coordinates into numerical form
-                parsed_coords = [list(map(float, coord.split(",")))[:2] for coord in coords]
+                    # 🔹 Convert coordinates into numerical form
+                    parsed_coords = [list(map(float, coord.split(",")))[:2] for coord in coords]
 
-                # 🔹 Determine geometry type
-                if len(parsed_coords) == 1:
-                    geometry_type = "Point"
-                    geometry_data = {"type": geometry_type, "coordinates": parsed_coords[0]}
-                elif len(parsed_coords) > 1:
-                    if parsed_coords[0] == parsed_coords[-1]:  # Closed shape = Polygon
-                        geometry_type = "Polygon"
-                        geometry_data = {"type": geometry_type, "coordinates": [parsed_coords]}
-                    else:
-                        geometry_type = "MultiPolygon"
-                        geometry_data = {"type": geometry_type, "coordinates": [[parsed_coords]]}
+                    # 🔹 Determine geometry type
+                    if len(parsed_coords) == 1:
+                        geometry_type = "Point"
+                        geometry_data = {"type": geometry_type, "coordinates": parsed_coords[0]}
+                    elif len(parsed_coords) > 1:
+                        if parsed_coords[0] == parsed_coords[-1]:  # Closed shape = Polygon
+                            geometry_type = "Polygon"
+                            geometry_data = {"type": geometry_type, "coordinates": [parsed_coords]}
+                        else:
+                            geometry_type = "MultiPolygon"
+                            geometry_data = {"type": geometry_type, "coordinates": [[parsed_coords]]}
 
-                # 🔹 Add feature to GeoJSON
-                geojson_data["features"].append(
-                    {
-                        "type": "Feature",
-                        "geometry": geometry_data,
-                        "properties": {"name": placemark.findtext(".//{http://www.opengis.net/kml/2.2}name", "")},
-                    }
-                )
-        return geojson_data
+                    # 🔹 Add feature to GeoJSON
+                    geojson_data["features"].append(
+                        {
+                            "type": "Feature",
+                            "geometry": geometry_data,
+                            "properties": {"name": placemark.findtext(".//{http://www.opengis.net/kml/2.2}name", "")},
+                        }
+                    )
+            return geojson_data
 
-    except Exception as e:
-        return {"error": f"Failed to convert XML/KML/GPX: {str(e)}"}
+        except Exception as e:
+            return {"error": f"Failed to convert XML/KML/GPX: {str(e)}"}
 
 
 # -----------------------------------
