@@ -53,7 +53,7 @@ class InputViewSet(viewsets.ModelViewSet):
             return Input.objects.filter(user_id=user_id)
         return Input.objects.all()
 
-    def perform_create(self, serializer):
+     def perform_create(self, serializer):
         user_id = self.request.data.get("user_id")
         input_type = self.request.data.get("input_type")
         data_link = self.request.data.get("data_link")
@@ -61,48 +61,57 @@ class InputViewSet(viewsets.ModelViewSet):
         if not user_id:
             return Response({"error": "user_id is required"}, status=400)
 
-        # ✅ Prevent duplicate model uploads for the same user
-        if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
-            raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
-
-        # ✅ Step 1: Determine Cloud Provider (AWS, GCP, DigitalOcean)
-        cloud_provider = self.get_cloud_provider(data_link)
-        
-        # ✅ Step 2: Validate File Type
-        file_type = self.get_file_type(data_link)
-
-        # ✅ Fetch Processed Data if needed
-        processed_data = None
-        signed_url = None
-
         try:
+            # ✅ Step 1: Determine Cloud Provider (AWS, GCP, DigitalOcean)
+            cloud_provider = self.get_cloud_provider(data_link)
+            
+            # ✅ Step 2: Validate File Type
+            file_type = self.get_file_type(data_link)
+
+            # ✅ Fetch Processed Data if needed
+            processed_data = None
+            signed_url = None
+
+            if not data_link:
+                raise ValidationError({"error": "data_link is required"})
+            
+            print(f"Processing data from: {data_link}")
             response = requests.get(data_link)
-            if response.status_code == 200:
-                file_content = response.text
+            response.raise_for_status()  # Raises HTTP error if request fails
+            file_content = response.text
 
-                if file_type in ["json", "geojson"]:
-                    processed_data = response.json()
-                elif file_type == "csv":
-                    processed_data = self.convert_csv_to_geojson(file_content)
-                elif file_type in ["xml", "kml", "gpx"]:
-                    processed_data = self.convert_xml_to_geojson(file_content)
-                elif file_type in ["tif", "tiff"]:
-                    signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
-            else:
-                raise ValidationError({"error": "Failed to fetch model from cloud storage."})
+            if file_type in ["json", "geojson"]:
+                processed_data = response.json()
+            elif file_type == "csv":
+                processed_data = self.convert_csv_to_geojson(file_content)
+            elif file_type in ["xml", "kml", "gpx"]:
+                processed_data = self.convert_xml_to_geojson(file_content)
+            elif file_type in ["tif", "tiff"]:
+                signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
+
+            # ✅ Save Data to Database
+            serializer.save(
+                user_id=user_id,
+                input_type=input_type,
+                data_link=data_link,
+                cloud_provider=cloud_provider,
+                file_type=file_type.upper() if file_type else None,
+                processed_data=json.dumps(processed_data) if processed_data else None,
+                signed_url=signed_url
+            )
+        except requests.exceptions.RequestException as req_err:
+            print(f"❌ Network Error: {str(req_err)}")
+            return Response({"error": f"Network error while fetching data: {str(req_err)}"}, status=500)
+        except json.JSONDecodeError as json_err:
+            print(f"❌ JSON Parsing Error: {str(json_err)}")
+            return Response({"error": f"Invalid JSON format in file: {str(json_err)}"}, status=400)
+        except ValidationError as val_err:
+            print(f"❌ Validation Error: {val_err.detail}")
+            return Response(val_err.detail, status=400)
         except Exception as e:
-            raise ValidationError({"error": f"Error processing file: {str(e)}"})
+            print(f"❌ Server Error: {str(e)}")
+            return Response({"error": f"Internal Server Error: {str(e)}"}, status=500)
 
-        # ✅ Save Data to Database
-        serializer.save(
-            user_id=user_id,
-            input_type=input_type,
-            data_link=data_link,
-            cloud_provider=cloud_provider,
-            file_type=file_type.upper() if file_type else None,
-            processed_data=json.dumps(processed_data) if processed_data else None,
-            signed_url=signed_url
-        )
 
     def get_cloud_provider(self, url):
         """ Detects which cloud provider the link belongs to """
