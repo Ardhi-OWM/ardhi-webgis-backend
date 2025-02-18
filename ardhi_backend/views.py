@@ -52,34 +52,27 @@ class InputViewSet(viewsets.ModelViewSet):
         if user_id:
             return Input.objects.filter(user_id=user_id)
         return Input.objects.all()
-
-    def perform_create(self, serializer):
+def perform_create(self, serializer):
         user_id = self.request.data.get("user_id")
         input_type = self.request.data.get("input_type")
         data_link = self.request.data.get("data_link")
 
-        if not user_id:
-            return Response({"error": "user_id is required"}, status=400)
+        if not user_id or not data_link:
+            return Response({"error": "user_id and data_link are required"}, status=400)
 
         try:
-            # ✅ Step 1: Determine Cloud Provider (AWS, GCP, DigitalOcean)
+            print(f"Processing data from: {data_link}")
             cloud_provider = self.get_cloud_provider(data_link)
-            
-            # ✅ Step 2: Validate File Type
             file_type = self.get_file_type(data_link)
-
-            # ✅ Fetch Processed Data if needed
             processed_data = None
             signed_url = None
 
-            if not data_link:
-                raise ValidationError({"error": "data_link is required"})
-            
-            print(f"Processing data from: {data_link}")
             response = requests.get(data_link)
-            response.raise_for_status()  # Raises HTTP error if request fails
+            response.raise_for_status()
             file_content = response.text
 
+            print(f"Detected File Type: {file_type}, Cloud Provider: {cloud_provider}")
+            
             if file_type in ["json", "geojson"]:
                 processed_data = response.json()
             elif file_type == "csv":
@@ -89,16 +82,16 @@ class InputViewSet(viewsets.ModelViewSet):
             elif file_type in ["tif", "tiff"]:
                 signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
 
-            # ✅ Save Data to Database
             serializer.save(
                 user_id=user_id,
                 input_type=input_type,
                 data_link=data_link,
-                cloud_provider=cloud_provider,
-                file_type=file_type.upper() if file_type else None,
+                cloud_provider=cloud_provider if cloud_provider else "Unknown",
+                file_type=file_type.upper() if file_type else "Unknown",
                 processed_data=json.dumps(processed_data) if processed_data else None,
                 signed_url=signed_url
             )
+            print("✅ Data successfully saved")
         except requests.exceptions.RequestException as req_err:
             print(f"❌ Network Error: {str(req_err)}")
             return Response({"error": f"Network error while fetching data: {str(req_err)}"}, status=500)
@@ -111,7 +104,6 @@ class InputViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(f"❌ Server Error: {str(e)}")
             return Response({"error": f"Internal Server Error: {str(e)}"}, status=500)
-
 
     def get_cloud_provider(self, url):
         """ Detects which cloud provider the link belongs to """
@@ -132,7 +124,7 @@ class InputViewSet(viewsets.ModelViewSet):
         path = parsed_url.path
         file_extension = path.split(".")[-1].lower()
         return file_extension if file_extension else None
-    
+
     def convert_csv_to_geojson(self, csv_text):
         """
         Convert CSV data into GeoJSON format.
