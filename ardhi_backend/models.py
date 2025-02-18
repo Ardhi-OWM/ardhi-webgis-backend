@@ -4,10 +4,10 @@ class Input(models.Model):
     user_id = models.CharField(max_length=255)
     input_type = models.CharField(max_length=50, choices=[("API", "API"), ("Model", "Model"), ("Dataset", "Dataset")])
     data_link = models.URLField()
-    cloud_provider = models.CharField(max_length=100, null=True, blank=True)  # AWS, GCP, etc.
-    file_type = models.CharField(max_length=20, null=True, blank=True)  # GEOJSON, KML, CSV, etc.
-    processed_data = models.JSONField(null=True, blank=True)  # Store processed JSON data
-    signed_url = models.URLField(null=True, blank=True)  # Secure access URL
+    cloud_provider = models.CharField(max_length=100, null=True, blank=True)  
+    file_type = models.CharField(max_length=20, null=True, blank=True) 
+    processed_data = models.JSONField(null=True, blank=True) 
+    signed_url = models.URLField(null=True, blank=True) 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
