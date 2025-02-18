@@ -61,58 +61,57 @@ class InputViewSet(viewsets.ModelViewSet):
         if not user_id or not data_link:
             return Response({"error": "user_id and data_link are required"}, status=400)
 
-        try:
-            print(f"Processing data from: {data_link}")
-            cloud_provider = self.get_cloud_provider(data_link)
-            file_type = self.get_file_type(data_link)
-            processed_data = None
-            signed_url = None
+        # ✅ Prevent duplicate entries
+        if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
+            raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
 
-            response = requests.get(data_link)
-            response.raise_for_status()
-            file_content = response.text
+        cloud_provider = None
+        file_type = None
+        processed_data = None
+        signed_url = None
 
-            print(f"Detected File Type: {file_type}, Cloud Provider: {cloud_provider}")
-            
-            if file_type in ["json", "geojson"]:
-                processed_data = response.json()
-            elif file_type == "csv":
-                processed_data = self.convert_csv_to_geojson(file_content)
-            elif file_type in ["xml", "kml", "gpx"]:
-                processed_data = self.convert_xml_to_geojson(file_content)
-            elif file_type in ["tif", "tiff"]:
-                signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
+        # ✅ Only process "Model" inputs (skip API and Dataset)
+        if input_type == "Model":
+            try:
+                print(f"Processing model data from: {data_link}")
+                cloud_provider = self.get_cloud_provider(data_link)
+                file_type = self.get_file_type(data_link)
 
-            # ✅ Validate Data Before Saving
-            serializer = InputSerializer(data={
-                "user_id": user_id,
-                "input_type": input_type,
-                "data_link": data_link,
-                "cloud_provider": cloud_provider if cloud_provider else "Unknown",
-                "file_type": file_type.upper() if file_type else "Unknown",
-                "processed_data": json.dumps(processed_data) if processed_data else None,
-                "signed_url": signed_url
-            })
+                response = requests.get(data_link)
+                response.raise_for_status()
+                file_content = response.text
 
-            if serializer.is_valid():
-                instance = serializer.save()
-                print(f"✅ Data successfully saved: {instance}")
-                return Response(serializer.data, status=201)
-            else:
-                print(f"❌ Validation Error: {serializer.errors}")
-                return Response(serializer.errors, status=400)
-        except requests.exceptions.RequestException as req_err:
-            print(f"❌ Network Error: {str(req_err)}")
-            return Response({"error": f"Network error while fetching data: {str(req_err)}"}, status=500)
-        except json.JSONDecodeError as json_err:
-            print(f"❌ JSON Parsing Error: {str(json_err)}")
-            return Response({"error": f"Invalid JSON format in file: {str(json_err)}"}, status=400)
-        except ValidationError as val_err:
-            print(f"❌ Validation Error: {val_err.detail}")
-            return Response(val_err.detail, status=400)
-        except Exception as e:
-            print(f"❌ Server Error: {str(e)}")
-            return Response({"error": f"Internal Server Error: {str(e)}"}, status=500)
+                print(f"Detected File Type: {file_type}, Cloud Provider: {cloud_provider}")
+
+                if file_type in ["json", "geojson"]:
+                    processed_data = response.json()
+                elif file_type == "csv":
+                    processed_data = self.convert_csv_to_geojson(file_content)
+                elif file_type in ["xml", "kml", "gpx"]:
+                    processed_data = self.convert_xml_to_geojson(file_content)
+                elif file_type in ["tif", "tiff"]:
+                    signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
+
+            except requests.exceptions.RequestException as req_err:
+                print(f"❌ Network Error: {str(req_err)}")
+                return Response({"error": f"Network error while fetching model: {str(req_err)}"}, status=500)
+            except json.JSONDecodeError as json_err:
+                print(f"❌ JSON Parsing Error: {str(json_err)}")
+                return Response({"error": f"Invalid JSON format in file: {str(json_err)}"}, status=400)
+            except Exception as e:
+                print(f"❌ Server Error: {str(e)}")
+                return Response({"error": f"Internal Server Error: {str(e)}"}, status=500)
+
+        # ✅ Save Input Entry (skip processing for API & Dataset)
+        serializer.save(
+            user_id=user_id,
+            input_type=input_type,
+            data_link=data_link,
+            cloud_provider=cloud_provider if input_type == "Model" else None,
+            file_type=file_type.upper() if input_type == "Model" and file_type else None,
+            processed_data=json.dumps(processed_data) if input_type == "Model" and processed_data else None,
+            signed_url=signed_url if input_type == "Model" else None,
+        )
 
     def get_cloud_provider(self, url):
         """ Detects which cloud provider the link belongs to """
