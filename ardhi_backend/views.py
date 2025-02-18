@@ -52,6 +52,7 @@ class InputViewSet(viewsets.ModelViewSet):
         if user_id:
             return Input.objects.filter(user_id=user_id)
         return Input.objects.all()
+
     def perform_create(self, serializer):
         user_id = self.request.data.get("user_id")
         input_type = self.request.data.get("input_type")
@@ -82,16 +83,24 @@ class InputViewSet(viewsets.ModelViewSet):
             elif file_type in ["tif", "tiff"]:
                 signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
 
-            serializer.save(
-                user_id=user_id,
-                input_type=input_type,
-                data_link=data_link,
-                cloud_provider=cloud_provider if cloud_provider else "Unknown",
-                file_type=file_type.upper() if file_type else "Unknown",
-                processed_data=json.dumps(processed_data) if processed_data else None,
-                signed_url=signed_url
-            )
-            print("✅ Data successfully saved")
+            # ✅ Validate Data Before Saving
+            serializer = InputSerializer(data={
+                "user_id": user_id,
+                "input_type": input_type,
+                "data_link": data_link,
+                "cloud_provider": cloud_provider if cloud_provider else "Unknown",
+                "file_type": file_type.upper() if file_type else "Unknown",
+                "processed_data": json.dumps(processed_data) if processed_data else None,
+                "signed_url": signed_url
+            })
+
+            if serializer.is_valid():
+                instance = serializer.save()
+                print(f"✅ Data successfully saved: {instance}")
+                return Response(serializer.data, status=201)
+            else:
+                print(f"❌ Validation Error: {serializer.errors}")
+                return Response(serializer.errors, status=400)
         except requests.exceptions.RequestException as req_err:
             print(f"❌ Network Error: {str(req_err)}")
             return Response({"error": f"Network error while fetching data: {str(req_err)}"}, status=500)
