@@ -52,7 +52,7 @@ class InputViewSet(viewsets.ModelViewSet):
         if user_id:
             return Input.objects.filter(user_id=user_id)
         return Input.objects.all()
-def perform_create(self, serializer):
+    def perform_create(self, serializer):
         user_id = self.request.data.get("user_id")
         input_type = self.request.data.get("input_type")
         data_link = self.request.data.get("data_link")
