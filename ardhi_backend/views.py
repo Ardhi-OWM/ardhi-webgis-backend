@@ -115,7 +115,6 @@ class InputViewSet(viewsets.ModelViewSet):
             signed_url=signed_url,
         )
 
-
     def convert_csv_to_geojson(self, csv_text):
         """
         Convert CSV data into GeoJSON format.
@@ -219,6 +218,32 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
             return Response({"message": "API Endpoint deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         except APIEndpoint.DoesNotExist:
             return Response({"error": "API Endpoint not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+# -----------------------------------
+# ✅ Subscription Management
+# -----------------------------------
+class SubscriptionViewSet(viewsets.ModelViewSet):
+    serializer_class = SubscriptionSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        user_id = self.request.query_params.get("user_id")
+        if user_id:
+            return Subscription.objects.filter(user_id=user_id)
+        return Subscription.objects.all()
+
+    def perform_create(self, serializer):
+        user_id = self.request.data.get("user_id")
+        email = self.request.data.get("email")
+
+        if not user_id:
+            raise ValidationError({"error": "user_id is required"})
+
+        if Subscription.objects.filter(email=email).exists():
+            raise ValidationError({"error": "This email is already subscribed."})
+
+        serializer.save(user_id=user_id)
 
 
 # -----------------------------------
