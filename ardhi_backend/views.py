@@ -70,36 +70,48 @@ class InputViewSet(viewsets.ModelViewSet):
         processed_data = None
         signed_url = None
 
+        # ✅ DEBUG: Print input type
+        print(f"Received Input Type: {input_type}, Data Link: {data_link}")
+
         # ✅ Only process "Model" inputs (skip API and Dataset)
         if input_type == "Model":
             try:
-                print(f"Processing model data from: {data_link}")
+                print(f"✅ Processing model data from: {data_link}")
                 cloud_provider = self.get_cloud_provider(data_link)
                 file_type = self.get_file_type(data_link)
 
-                response = requests.get(data_link)
+                # ✅ DEBUG: Print detected file type
+                print(f"✅ Detected File Type: {file_type}, Cloud Provider: {cloud_provider}")
+
+                # ✅ Fetch model data
+                response = requests.get(data_link, timeout=10)  # Add timeout to avoid hanging
                 response.raise_for_status()
-                file_content = response.text
+                file_content = response.text  # Read file content
 
-                print(f"Detected File Type: {file_type}, Cloud Provider: {cloud_provider}")
-
+                # ✅ Process Based on File Type
                 if file_type in ["json", "geojson"]:
-                    processed_data = response.json()
+                    try:
+                        processed_data = response.json()
+                    except json.JSONDecodeError as json_err:
+                        print(f"❌ JSON Parsing Error: {json_err}")
+                        return Response({"error": f"Invalid JSON format: {str(json_err)}"}, status=400)
                 elif file_type == "csv":
                     processed_data = self.convert_csv_to_geojson(file_content)
                 elif file_type in ["xml", "kml", "gpx"]:
                     processed_data = self.convert_xml_to_geojson(file_content)
                 elif file_type in ["tif", "tiff"]:
                     signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
+                else:
+                    print(f"❌ Unsupported File Type: {file_type}")
+                    return Response({"error": f"Unsupported file type: {file_type}"}, status=400)
+
+                print(f"✅ Model Processing Successful! Processed Data: {processed_data}")
 
             except requests.exceptions.RequestException as req_err:
-                print(f"❌ Network Error: {str(req_err)}")
+                print(f"❌ Network Error: {req_err}")
                 return Response({"error": f"Network error while fetching model: {str(req_err)}"}, status=500)
-            except json.JSONDecodeError as json_err:
-                print(f"❌ JSON Parsing Error: {str(json_err)}")
-                return Response({"error": f"Invalid JSON format in file: {str(json_err)}"}, status=400)
             except Exception as e:
-                print(f"❌ Server Error: {str(e)}")
+                print(f"❌ Unexpected Error: {str(e)}")
                 return Response({"error": f"Internal Server Error: {str(e)}"}, status=500)
 
         # ✅ Save Input Entry (skip processing for API & Dataset)
@@ -112,6 +124,9 @@ class InputViewSet(viewsets.ModelViewSet):
             processed_data=json.dumps(processed_data) if input_type == "Model" and processed_data else None,
             signed_url=signed_url if input_type == "Model" else None,
         )
+
+        print(f"✅ Successfully saved {input_type} entry for user: {user_id}")
+
 
     def get_cloud_provider(self, url):
         """ Detects which cloud provider the link belongs to """
