@@ -2,7 +2,12 @@ from django.db import models
 
 class Input(models.Model):
     user_id = models.CharField(max_length=255)
-    input_type = models.CharField(max_length=50, choices=[("API", "API"), ("Model", "Model"), ("Dataset", "Dataset")])
+    INPUT_TYPE_CHOICES = [
+        ("API", "API"),
+        ("Model", "Link to Model"),  
+        ("Dataset", "Link to Dataset"),
+    ]
+    input_type = models.CharField(max_length=50, choices=INPUT_TYPE_CHOICES)
     data_link = models.URLField()
     cloud_provider = models.CharField(max_length=100, null=True, blank=True)  
     file_type = models.CharField(max_length=20, null=True, blank=True) 
@@ -15,6 +20,7 @@ class Input(models.Model):
 
     def get_processed_data(self):
         return json.loads(self.processed_data) if self.processed_data else None
+
 class Subscription(models.Model):
     user_id = models.CharField(max_length=255)  
     email = models.EmailField(unique=True)  
