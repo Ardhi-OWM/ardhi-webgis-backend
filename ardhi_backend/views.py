@@ -62,36 +62,34 @@ class InputViewSet(viewsets.ModelViewSet):
         if not user_id or not data_link:
             return Response({"error": "user_id and data_link are required"}, status=400)
 
-        if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
-            raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
-
-        cloud_provider = None
-        file_type = None
-        processed_data = None
-        signed_url = None
-
-        print(f"📌 Received Input Type: {input_type}, Data Link: {data_link}")
+        print(f"🔹 Received input: {input_type} - {data_link}")
 
         if input_type == "Model":
+            cloud_provider = self.get_cloud_provider(data_link)
+            file_type = self.get_file_type(data_link)
+
+            print(f"✅ Detected Cloud Provider: {cloud_provider}")  
+            print(f"✅ Detected File Type: {file_type}")
+
+            if not file_type:
+                print("❌ Error: File type detection failed!")
+                return Response({"error": "Could not detect file type from URL."}, status=400)
+
+            processed_data = None
+            signed_url = None
+
             try:
-                print(f"✅ Processing model data from: {data_link}")
-                cloud_provider = self.get_cloud_provider(data_link)
-                file_type = self.get_file_type(data_link)
-
-                if not file_type:
-                    print("❌ File type could not be detected!")
-                    return Response({"error": "Could not detect file type."}, status=400)
-
-                print(f"✅ Detected File Type: {file_type.upper()}, Cloud Provider: {cloud_provider}")
-
-                response = requests.get(data_link, timeout=10)  
+                print(f"🔹 Fetching file from {data_link} ...")
+                response = requests.get(data_link, timeout=10)
                 response.raise_for_status()
                 file_content = response.text  
 
-                # Process data based on file type
+                print(f"✅ Successfully fetched file content!")
+
                 if file_type in ["json", "geojson"]:
                     try:
                         processed_data = response.json()
+                        print(f"✅ Processed JSON: {processed_data}")
                     except json.JSONDecodeError as json_err:
                         print(f"❌ JSON Parsing Error: {json_err}")
                         return Response({"error": f"Invalid JSON format: {str(json_err)}"}, status=400)
@@ -105,8 +103,7 @@ class InputViewSet(viewsets.ModelViewSet):
                     print(f"❌ Unsupported File Type: {file_type}")
                     return Response({"error": f"Unsupported file type: {file_type}"}, status=400)
 
-                # **Debugging: Check Processed Data Before Saving**
-                print(f"🔍 Processed Data Before Saving: {processed_data}")
+                print(f"✅ Model Processing Successful! Processed Data: {processed_data}")
 
             except requests.exceptions.RequestException as req_err:
                 print(f"❌ Network Error: {req_err}")
@@ -115,23 +112,30 @@ class InputViewSet(viewsets.ModelViewSet):
                 print(f"❌ Unexpected Error: {str(e)}")
                 return Response({"error": f"Internal Server Error: {str(e)}"}, status=500)
 
-        serializer.save(
-            user_id=user_id,
-            input_type=input_type,
-            data_link=data_link,
-            cloud_provider=cloud_provider if input_type == "Model" else None,
-            file_type=file_type.upper() if input_type == "Model" and file_type else None,
-            processed_data=json.dumps(processed_data) if input_type == "Model" and processed_data else None,
-            signed_url=signed_url if input_type == "Model" else None,
-        )
+            # ✅ Save Processed Model Data
+            serializer.save(
+                user_id=user_id,
+                input_type=input_type,
+                data_link=data_link,
+                cloud_provider=cloud_provider,
+                file_type=file_type.upper() if file_type else None,
+                processed_data=json.dumps(processed_data) if processed_data else None,
+                signed_url=signed_url
+            )
 
-        print(f"✅ Successfully saved {input_type} entry for user: {user_id}")
+            print(f"✅ Successfully saved model for user {user_id}")
+
+            return Response(serializer.data, status=201)
+
+        else:
+            serializer.save(user_id=user_id, input_type=input_type, data_link=data_link)
+            return Response(serializer.data, status=201)
 
     def get_cloud_provider(self, url):
         """ Detects which cloud provider the link belongs to """
         if "amazonaws.com" in url:
             return "AWS"
-        elif "googleapis.com" in url:
+        elif "storage.googleapis.com" in url:  # ✅ Fix for Google Cloud Storage
             return "Google Cloud"
         elif "digitaloceanspaces.com" in url:
             return "DigitalOcean"
@@ -145,8 +149,14 @@ class InputViewSet(viewsets.ModelViewSet):
         parsed_url = urlparse(url)
         path = parsed_url.path
         file_extension = path.split(".")[-1].lower()
-        return file_extension if file_extension else None
 
+        print(f"🔹 Extracted File Extension: {file_extension}")
+
+        if file_extension in ["json", "geojson", "csv", "xml", "kml", "gpx", "tif", "tiff"]:
+            return file_extension
+        else:
+            print("❌ Unsupported file extension detected!")
+            return None
 
     def convert_csv_to_geojson(self, csv_text):
         """
