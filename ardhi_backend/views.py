@@ -3,18 +3,10 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django.http import JsonResponse
 from django.conf import settings
-import requests
-import boto3
-import json
-import csv
-import xml.etree.ElementTree as ET
-from io import StringIO
 from urllib.parse import urlparse
 from rest_framework.exceptions import ValidationError
 from .models import Input, Subscription, APIEndpoint
 from .serializers import InputSerializer, SubscriptionSerializer, APIEndpointSerializer
-from fastkml import kml  
-import geopandas as gpd  
 from rest_framework.decorators import action
 
 
@@ -41,20 +33,23 @@ def get_s3_signed_url(bucket_name, file_key):
     except Exception as e:
         return str(e)
 
+        
 # -----------------------------------
-# ✅ Handle Model Upload, Validation, and Processing
+# ✅ Handle Input Data Storage
 # -----------------------------------
 class InputViewSet(viewsets.ModelViewSet):
     serializer_class = InputSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        """Retrieve inputs for a specific user."""
         user_id = self.request.query_params.get("user_id")
         if user_id:
             return Input.objects.filter(user_id=user_id)
         return Input.objects.all()
 
     def perform_create(self, serializer):
+        """Stores the uploaded model URL without processing."""
         user_id = self.request.data.get("user_id")
         input_type = self.request.data.get("input_type")
         data_link = self.request.data.get("data_link")
@@ -62,80 +57,32 @@ class InputViewSet(viewsets.ModelViewSet):
         if not user_id or not data_link:
             return Response({"error": "user_id and data_link are required"}, status=400)
 
-        print(f"🔹 Received input: {input_type} - {data_link}")
+        if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
+            raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
 
-        if input_type == "Model":
-            cloud_provider = self.get_cloud_provider(data_link)
-            file_type = self.get_file_type(data_link)
+        # ✅ Extract Cloud Provider
+        cloud_provider = self.get_cloud_provider(data_link)
 
-            print(f"✅ Detected Cloud Provider: {cloud_provider}")  
-            print(f"✅ Detected File Type: {file_type}")
+        # ✅ Extract File Type
+        file_type = self.get_file_type(data_link)
 
-            if not file_type:
-                print("❌ Error: File type detection failed!")
-                return Response({"error": "Could not detect file type from URL."}, status=400)
+        # ✅ Save Entry Without Processing
+        serializer.save(
+            user_id=user_id,
+            input_type=input_type,
+            data_link=data_link,
+            cloud_provider=cloud_provider,
+            file_type=file_type.upper() if file_type else None,
+        )
 
-            processed_data = None
-            signed_url = None
-
-            try:
-                print(f"🔹 Fetching file from {data_link} ...")
-                response = requests.get(data_link, timeout=10)
-                response.raise_for_status()
-                file_content = response.text  
-
-                print(f"✅ Successfully fetched file content!")
-
-                if file_type in ["json", "geojson"]:
-                    try:
-                        processed_data = response.json()
-                        print(f"✅ Processed JSON: {processed_data}")
-                    except json.JSONDecodeError as json_err:
-                        print(f"❌ JSON Parsing Error: {json_err}")
-                        return Response({"error": f"Invalid JSON format: {str(json_err)}"}, status=400)
-                elif file_type == "csv":
-                    processed_data = self.convert_csv_to_geojson(file_content)
-                elif file_type in ["xml", "kml", "gpx"]:
-                    processed_data = self.convert_xml_to_geojson(file_content)
-                elif file_type in ["tif", "tiff"]:
-                    signed_url = get_s3_signed_url(settings.S3_BUCKET_NAME, data_link.split("/")[-1])
-                else:
-                    print(f"❌ Unsupported File Type: {file_type}")
-                    return Response({"error": f"Unsupported file type: {file_type}"}, status=400)
-
-                print(f"✅ Model Processing Successful! Processed Data: {processed_data}")
-
-            except requests.exceptions.RequestException as req_err:
-                print(f"❌ Network Error: {req_err}")
-                return Response({"error": f"Network error while fetching model: {str(req_err)}"}, status=500)
-            except Exception as e:
-                print(f"❌ Unexpected Error: {str(e)}")
-                return Response({"error": f"Internal Server Error: {str(e)}"}, status=500)
-
-            # ✅ Save Processed Model Data
-            serializer.save(
-                user_id=user_id,
-                input_type=input_type,
-                data_link=data_link,
-                cloud_provider=cloud_provider,
-                file_type=file_type.upper() if file_type else None,
-                processed_data=json.dumps(processed_data) if processed_data else None,
-                signed_url=signed_url
-            )
-
-            print(f"✅ Successfully saved model for user {user_id}")
-
-            return Response(serializer.data, status=201)
-
-        else:
-            serializer.save(user_id=user_id, input_type=input_type, data_link=data_link)
-            return Response(serializer.data, status=201)
+        print(f"✅ Successfully stored {input_type} for user {user_id}")
+        return Response(serializer.data, status=201)
 
     def get_cloud_provider(self, url):
-        """ Detects which cloud provider the link belongs to """
+        """Detects the cloud provider from the URL."""
         if "amazonaws.com" in url:
             return "AWS"
-        elif "storage.googleapis.com" in url:  # ✅ Fix for Google Cloud Storage
+        elif "storage.googleapis.com" in url:
             return "Google Cloud"
         elif "digitaloceanspaces.com" in url:
             return "DigitalOcean"
@@ -145,76 +92,17 @@ class InputViewSet(viewsets.ModelViewSet):
             return "Unknown"
 
     def get_file_type(self, url):
-        """ Extracts file type from the URL """
+        """Extracts file type from the URL."""
         parsed_url = urlparse(url)
         path = parsed_url.path
         file_extension = path.split(".")[-1].lower()
 
         print(f"🔹 Extracted File Extension: {file_extension}")
-
         if file_extension in ["json", "geojson", "csv", "xml", "kml", "gpx", "tif", "tiff"]:
             return file_extension
         else:
             print("❌ Unsupported file extension detected!")
             return None
-
-    def convert_csv_to_geojson(self, csv_text):
-        """
-        Convert CSV data into GeoJSON format.
-        The CSV must have 'latitude' and 'longitude' columns.
-        """
-        try:
-            csv_reader = csv.DictReader(StringIO(csv_text))
-            features = []
-
-            for row in csv_reader:
-                if "latitude" in row and "longitude" in row:
-                    features.append({
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "Point",
-                            "coordinates": [float(row["longitude"]), float(row["latitude"])]
-                        },
-                        "properties": {k: v for k, v in row.items() if k not in ["latitude", "longitude"]}
-                    })
-
-            return {"type": "FeatureCollection", "features": features}
-        except Exception as e:
-            return {"error": f"Failed to convert CSV: {str(e)}"}
-
-    def convert_xml_to_geojson(self, xml_text):
-        """
-        Convert XML/KML/GPX into GeoJSON format, supporting Point, Polygon, and MultiPolygon.
-        """
-        try:
-            root = ET.fromstring(xml_text)
-            geojson_data = {"type": "FeatureCollection", "features": []}
-
-            for placemark in root.findall(".//{http://www.opengis.net/kml/2.2}Placemark"):
-                coordinates = placemark.find(".//{http://www.opengis.net/kml/2.2}coordinates")
-                if coordinates is not None:
-                    coords = coordinates.text.strip().split(" ")
-                    parsed_coords = [list(map(float, coord.split(",")))[:2] for coord in coords]
-
-                    if len(parsed_coords) == 1:
-                        geometry_type = "Point"
-                        geometry_data = {"type": geometry_type, "coordinates": parsed_coords[0]}
-                    elif parsed_coords[0] == parsed_coords[-1]:
-                        geometry_type = "Polygon"
-                        geometry_data = {"type": geometry_type, "coordinates": [parsed_coords]}
-                    else:
-                        geometry_type = "MultiPolygon"
-                        geometry_data = {"type": geometry_type, "coordinates": [[parsed_coords]]}
-                    
-                    geojson_data["features"].append({
-                        "type": "Feature",
-                        "geometry": geometry_data,
-                        "properties": {"name": placemark.findtext(".//{http://www.opengis.net/kml/2.2}name", "")}
-                    })
-            return geojson_data
-        except Exception as e:
-            return {"error": f"Failed to convert XML/KML/GPX: {str(e)}"}
-
 
 # -----------------------------------
 # ✅ API Endpoint Management
@@ -254,7 +142,6 @@ class APIEndpointViewSet(viewsets.ModelViewSet):
         except APIEndpoint.DoesNotExist:
             return Response({"error": "API Endpoint not found"}, status=status.HTTP_404_NOT_FOUND)
 
-
 # -----------------------------------
 # ✅ Subscription Management
 # -----------------------------------
@@ -279,7 +166,6 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
             raise ValidationError({"error": "This email is already subscribed."})
 
         serializer.save(user_id=user_id)
-
 
 # -----------------------------------
 # ✅ Home API Endpoint

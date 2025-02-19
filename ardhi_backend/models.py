@@ -7,19 +7,16 @@ class Input(models.Model):
         ("Model", "Link to Model"),  
         ("Dataset", "Link to Dataset"),
     ]
+    
     input_type = models.CharField(max_length=50, choices=INPUT_TYPE_CHOICES)
     data_link = models.URLField()
-    cloud_provider = models.CharField(max_length=100, null=True, blank=True)  
-    file_type = models.CharField(max_length=20, null=True, blank=True) 
-    processed_data = models.JSONField(null=True, blank=True) 
-    signed_url = models.URLField(null=True, blank=True) 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.input_type} - {self.user_id}"
 
-    def get_processed_data(self):
-        return json.loads(self.processed_data) if self.processed_data else None
+    def __str__(self):
+        return f"{self.input_type} - {self.user_id}"
 
 class Subscription(models.Model):
     user_id = models.CharField(max_length=255)  
