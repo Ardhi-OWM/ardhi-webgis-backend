@@ -15,9 +15,6 @@ class Input(models.Model):
     def __str__(self):
         return f"{self.input_type} - {self.user_id}"
 
-    def __str__(self):
-        return f"{self.input_type} - {self.user_id}"
-
 class Subscription(models.Model):
     user_id = models.CharField(max_length=255)  
     email = models.EmailField(unique=True)  

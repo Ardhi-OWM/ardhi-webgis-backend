@@ -33,7 +33,7 @@ def get_s3_signed_url(bucket_name, file_key):
     except Exception as e:
         return str(e)
 
-        
+
 # -----------------------------------
 # ✅ Handle Input Data Storage
 # -----------------------------------
@@ -60,49 +60,11 @@ class InputViewSet(viewsets.ModelViewSet):
         if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
             raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
 
-        # ✅ Extract Cloud Provider
-        cloud_provider = self.get_cloud_provider(data_link)
-
-        # ✅ Extract File Type
-        file_type = self.get_file_type(data_link)
-
         # ✅ Save Entry Without Processing
-        serializer.save(
-            user_id=user_id,
-            input_type=input_type,
-            data_link=data_link,
-            cloud_provider=cloud_provider,
-            file_type=file_type.upper() if file_type else None,
-        )
+        serializer.save(user_id=user_id, input_type=input_type, data_link=data_link)
 
         print(f"✅ Successfully stored {input_type} for user {user_id}")
         return Response(serializer.data, status=201)
-
-    def get_cloud_provider(self, url):
-        """Detects the cloud provider from the URL."""
-        if "amazonaws.com" in url:
-            return "AWS"
-        elif "storage.googleapis.com" in url:
-            return "Google Cloud"
-        elif "digitaloceanspaces.com" in url:
-            return "DigitalOcean"
-        elif "dropbox.com" in url:
-            return "Dropbox"
-        else:
-            return "Unknown"
-
-    def get_file_type(self, url):
-        """Extracts file type from the URL."""
-        parsed_url = urlparse(url)
-        path = parsed_url.path
-        file_extension = path.split(".")[-1].lower()
-
-        print(f"🔹 Extracted File Extension: {file_extension}")
-        if file_extension in ["json", "geojson", "csv", "xml", "kml", "gpx", "tif", "tiff"]:
-            return file_extension
-        else:
-            print("❌ Unsupported file extension detected!")
-            return None
 
 # -----------------------------------
 # ✅ API Endpoint Management
