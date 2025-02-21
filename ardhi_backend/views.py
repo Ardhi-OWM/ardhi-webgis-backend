@@ -68,7 +68,7 @@ class InputViewSet(viewsets.ModelViewSet):
         print(f"✅ Successfully stored {input_type} for user {user_id}")
         return Response(serializer.data, status=201)
 
-        
+
 # -----------------------------------
 # ✅ Model and Dataset Management
 # -----------------------------------
@@ -99,17 +99,18 @@ class ModelDatasetViewSet(viewsets.ModelViewSet):
         serializer.save(user_id=user_id)
 
     @action(detail=False, methods=['delete'])
-    def delete_by_link(self, request):
-        link = request.data.get("link")
-        if not link:
-            return Response({"error": "link is required"}, status=status.HTTP_400_BAD_REQUEST)
+    def delete_by_id(self, request):
+        model_id = request.data.get("id")
+        if not model_id:
+            return Response({"error": "ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            instance = ModelDataset.objects.get(link=link)
+            instance = ModelDataset.objects.get(id=model_id)
             instance.delete()
             return Response({"message": "Model/Dataset deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         except ModelDataset.DoesNotExist:
             return Response({"error": "Model/Dataset not found"}, status=status.HTTP_404_NOT_FOUND)
+
 
 # -----------------------------------
 # ✅ Subscription Management
