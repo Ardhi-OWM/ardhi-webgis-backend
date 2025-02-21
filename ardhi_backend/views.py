@@ -5,9 +5,11 @@ from django.http import JsonResponse
 from django.conf import settings
 from urllib.parse import urlparse
 from rest_framework.exceptions import ValidationError
-from .models import Input, Subscription, APIEndpoint
-from .serializers import InputSerializer, SubscriptionSerializer, APIEndpointSerializer
+from .models import Input, Subscription, ModelDataset
+from .serializers import InputSerializer, SubscriptionSerializer, ModelDatasetSerializer
 from rest_framework.decorators import action
+
+
 
 
 # -----------------------------------
@@ -66,43 +68,48 @@ class InputViewSet(viewsets.ModelViewSet):
         print(f"✅ Successfully stored {input_type} for user {user_id}")
         return Response(serializer.data, status=201)
 
+        
 # -----------------------------------
-# ✅ API Endpoint Management
+# ✅ Model and Dataset Management
 # -----------------------------------
-class APIEndpointViewSet(viewsets.ModelViewSet):
-    serializer_class = APIEndpointSerializer
+class ModelDatasetViewSet(viewsets.ModelViewSet):
+    serializer_class = ModelDatasetSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
         user_id = self.request.query_params.get("user_id")
         if user_id:
-            return APIEndpoint.objects.filter(user_id=user_id)
-        return APIEndpoint.objects.all()
+            return ModelDataset.objects.filter(user_id=user_id)
+        return ModelDataset.objects.all()
 
     def perform_create(self, serializer):
         user_id = self.request.data.get("user_id")
-        api_url = self.request.data.get("api_url")
+        link = self.request.data.get("link")
+        dataset_type = self.request.data.get("type")
 
         if not user_id:
             raise ValidationError({"error": "user_id is required"})
 
-        if APIEndpoint.objects.filter(api_url=api_url, user_id=user_id).exists():
-            raise ValidationError({"detail": "This API URL already exists for this user."})
+        if not dataset_type or dataset_type not in ["model", "dataset"]:
+            raise ValidationError({"error": "type must be either 'model' or 'dataset'"})
+
+        if ModelDataset.objects.filter(link=link, user_id=user_id).exists():
+            raise ValidationError({"detail": f"This {dataset_type} link already exists for this user."})
 
         serializer.save(user_id=user_id)
 
     @action(detail=False, methods=['delete'])
-    def delete_by_api_url(self, request):
-        api_url = request.data.get("api_url")
-        if not api_url:
-            return Response({"error": "api_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+    def delete_by_link(self, request):
+        link = request.data.get("link")
+        if not link:
+            return Response({"error": "link is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            instance = APIEndpoint.objects.get(api_url=api_url)
+            instance = ModelDataset.objects.get(link=link)
             instance.delete()
-            return Response({"message": "API Endpoint deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-        except APIEndpoint.DoesNotExist:
-            return Response({"error": "API Endpoint not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"message": "Model/Dataset deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except ModelDataset.DoesNotExist:
+            return Response({"error": "Model/Dataset not found"}, status=status.HTTP_404_NOT_FOUND)
 
 # -----------------------------------
 # ✅ Subscription Management

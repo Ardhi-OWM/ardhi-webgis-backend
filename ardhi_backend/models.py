@@ -23,14 +23,15 @@ class Subscription(models.Model):
     def __str__(self):
         return f"Subscription - {self.email}"
 
-class APIEndpoint(models.Model):
+from django.db import models
+
+class ModelDataset(models.Model):
     user_id = models.CharField(max_length=255)
-    name = models.CharField(max_length=255)
+    type = models.CharField(max_length=10, choices=[("model", "Model"), ("dataset", "Dataset")])
     provider = models.CharField(max_length=255, blank=True, null=True)
     region = models.CharField(max_length=100, blank=True, null=True)
-    api_url = models.URLField(unique=True)
+    link = models.URLField(unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} - {self.user_id}"
-
+        return f"{self.type.capitalize()} - {self.user_id}"

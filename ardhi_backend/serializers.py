@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Input, Subscription, APIEndpoint
+from .models import Input, Subscription, ModelDataset
 
 class InputSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,7 +11,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = '__all__'
 
-class APIEndpointSerializer(serializers.ModelSerializer):
+class ModelDatasetSerializer(serializers.ModelSerializer):
     class Meta:
-        model = APIEndpoint
+        model = ModelDataset
         fields = '__all__'        
