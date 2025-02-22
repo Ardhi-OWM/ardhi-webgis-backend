@@ -29,7 +29,6 @@ router.register(r'subscriptions', SubscriptionViewSet, basename='subscription')
 
 # INFO: base read only views
 router.register(r'chat', ChatViewSet, basename='chat')
-router.register(r'chat-thread', ChatThreadViewSet, basename='chat-thread')
 
 urlpatterns = [
     path('get-s3-url/', get_s3_signed_url_view, name='get_s3_url'),  
