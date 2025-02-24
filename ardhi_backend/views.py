@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from rest_framework.exceptions import ValidationError
 from .models import Input, Subscription, ModelDataset
 from .serializers import InputSerializer, SubscriptionSerializer, ModelDatasetSerializer
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 
 
 
