@@ -98,6 +98,13 @@ class ModelDatasetViewSet(viewsets.ModelViewSet):
 
         serializer.save(user_id=user_id)
 
+    @api_view(['GET'])
+    def check_duplicate(request):
+        link = request.GET.get('link', None)
+        if link and ModelDataset.objects.filter(link=link).exists():
+            return Response({"exists": True})
+        return Response({"exists": False})
+    
     @action(detail=False, methods=['delete'])
     def delete_by_id(self, request):
         model_id = request.data.get("id")
