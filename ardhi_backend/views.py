@@ -15,25 +15,17 @@ from rest_framework.decorators import action, api_view
 # -----------------------------------
 # ✅ Generate Signed URL for Cloud Storage Access
 # -----------------------------------
-def get_s3_signed_url(bucket_name, file_key):
-    """
-    Generate a presigned URL for frontend access to a file stored in S3-compatible storage.
-    """
-    s3 = boto3.client(
-        "s3",
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        region_name=settings.AWS_REGION,
-    )
-    try:
-        presigned_url = s3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": bucket_name, "Key": file_key},
-            ExpiresIn=3600  # URL expires in 1 hour
-        )
-        return presigned_url
-    except Exception as e:
-        return str(e)
+from django.http import JsonResponse
+
+def get_s3_signed_url_view(request):
+    file_key = request.GET.get("file_key")  
+    bucket_name = settings.AWS_STORAGE_BUCKET_NAME 
+
+    if not file_key:
+        return JsonResponse({"error": "Missing file_key parameter"}, status=400)
+
+    presigned_url = get_s3_signed_url(bucket_name, file_key)
+    return JsonResponse({"url": presigned_url})
 
 
 # -----------------------------------
