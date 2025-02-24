@@ -4,7 +4,7 @@ from .views import (
     InputViewSet, 
     SubscriptionViewSet, 
     ModelDatasetViewSet,
-    get_s3_signed_url
+    get_s3_signed_url_view 
 )
 
 router = DefaultRouter()
@@ -13,7 +13,6 @@ router.register(r'inputs', InputViewSet, basename='input')
 router.register(r'subscriptions', SubscriptionViewSet, basename='subscription')
 
 urlpatterns = [
-    path('get-s3-url/', get_s3_signed_url, name='get_s3_url'),
+    path('get-s3-url/', get_s3_signed_url_view, name='get_s3_url'),  
     path('', include(router.urls)),
 ]
-

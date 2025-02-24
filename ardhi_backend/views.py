@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from .models import Input, Subscription, ModelDataset
 from .serializers import InputSerializer, SubscriptionSerializer, ModelDatasetSerializer
 from rest_framework.decorators import action, api_view
+import logging
 
 
 
@@ -15,17 +16,52 @@ from rest_framework.decorators import action, api_view
 # -----------------------------------
 # ✅ Generate Signed URL for Cloud Storage Access
 # -----------------------------------
-from django.http import JsonResponse
+
+logger = logging.getLogger(__name__)
+
+def get_s3_signed_url(bucket_name, file_key):
+    """
+    Generate a presigned URL for frontend access to a file stored in S3-compatible storage.
+    """
+    if not bucket_name or not file_key:
+        logger.error("Missing required parameters: bucket_name or file_key")
+        return None  
+
+    try:
+        s3 = boto3.client(
+            "s3",
+            region_name=settings.AWS_REGION,
+        )
+
+        presigned_url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket_name, "Key": file_key},
+            ExpiresIn=3600  
+        )
+
+        return presigned_url
+
+    except Exception as e:
+        logger.error(f"Error generating S3 presigned URL: {str(e)}", exc_info=True)
+        return None
+
 
 def get_s3_signed_url_view(request):
+    """
+    Django view to handle requests for S3 presigned URLs.
+    """
     file_key = request.GET.get("file_key")  
-    bucket_name = settings.AWS_STORAGE_BUCKET_NAME 
+    bucket_name = settings.S3_BUCKET_NAME 
 
     if not file_key:
         return JsonResponse({"error": "Missing file_key parameter"}, status=400)
 
     presigned_url = get_s3_signed_url(bucket_name, file_key)
-    return JsonResponse({"url": presigned_url})
+
+    if not presigned_url:
+        return JsonResponse({"error": "Failed to generate S3 presigned URL"}, status=500)
+
+    return JsonResponse({"success": True, "url": presigned_url}, status=200)
 
 
 # -----------------------------------
