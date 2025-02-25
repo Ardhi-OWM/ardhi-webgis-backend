@@ -1,15 +1,3 @@
-
-
-#-------------------------------------------------------------------------------
-# Name:        gridding
-# Purpose:      grids raster or vector data into patches
-#
-# Author:      caleb
-# Additional
-# source:
-# Copyright:   (c) caleb 2024
-# Licence:     <ardhi>
-#-------------------------------------------------------------------------------
 import pandas as pd
 import geopandas as gpd
 
@@ -90,10 +78,10 @@ def generate_image_patches(tiles,image,image_name,output_folder,size):
                 with rio.open(output_folder + "\{}_{}.tif".format(image_name,i),"w",**out_meta) as dest:
 
                     dest.write(out_image)
-
+"""
 ####Example
 ###specify data folder
-input_file=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\input\image_001.tif"
+input_file=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\input\image_clipped_wgs84.tif"
 output_grid_files=r'C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\output_grid'
 output_tif_folder=r'C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\output_patches'
 
@@ -101,15 +89,4 @@ output_tif_folder=r'C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\examp
 ###generating image patches
 tiles = generate_tiles(input_file, output_grid_files, "grid", size=256)
 generate_image_patches(tiles,input_file,"image_tiled",output_folder=output_tif_folder,size=256)
-
-
-
-
-
-
-
-
-
-
-
-
+"""

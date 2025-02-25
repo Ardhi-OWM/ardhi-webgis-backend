@@ -1,15 +1,3 @@
-#-------------------------------------------------------------------------------
-# Name:        raster to vector converter
-# Purpose:
-#
-# Author:      caleb
-# Additional
-# source:      [https://github.com/rasterio/rasterio/blob/main/rasterio/features.py#L77], https://gis.stackexchange.com/questions/187877/how-to-polygonize-raster-to-shapely-polygons/437855#437855
-# Created:     09/08/2022
-# Copyright:   (c) caleb 2024
-# Licence:     <ardhi>
-#-------------------------------------------------------------------------------
-
 import rasterio as rio
 from rasterio import features
 from rasterio.features import shapes
@@ -75,12 +63,12 @@ def raster_vector(input_raster,output_vector):
     ##plt.show()
 
 
-# try todownsample the data first
-###Specify input and output data
-
- #location of the raster to be vectorised
-input_file_path=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\mask\binary_inference_001.tif"
- # name of the vector to be created
-output_file_path=r'C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\vector\vector_inference_001.shp'
-
-raster_vector(input_file_path,output_file_path)
+### try todownsample the data first
+#####Specify input and output data
+##
+## #location of the raster to be vectorised
+##input_file_path=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\mosaic_mask\mosaic_mask.tif"
+## # name of the vector to be created
+##output_file_path=r'C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\vector\vector_inference.geojson'
+##
+##raster_vector(input_file_path,output_file_path)
