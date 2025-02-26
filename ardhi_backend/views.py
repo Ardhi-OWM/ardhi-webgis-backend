@@ -5,8 +5,8 @@ from django.http import JsonResponse
 from django.conf import settings
 from urllib.parse import urlparse
 from rest_framework.exceptions import ValidationError
-from .models import Input, Subscription, ModelDataset
-from .serializers import InputSerializer, SubscriptionSerializer, ModelDatasetSerializer
+from .models import  Subscription, ModelDataset
+from .serializers import SubscriptionSerializer, ModelDatasetSerializer
 from rest_framework.decorators import action, api_view
 import logging
 
@@ -14,30 +14,30 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, parser_classes
 from django.core.files.storage import default_storage
-from .serializers import ImageUploadSerializer
-from custom_modules.mosaic import process_mosaic
-from custom_modules.predict_feature_pytorch import process_prediction
-from custom_modules.tiling import process_tiling
-from custom_modules.vectorize import process_vectorization
+# from .serializers import ImageUploadSerializer
+# from custom_modules.mosaic import process_mosaic
+# # from custom_modules.predict_feature_pytorch import process_prediction
+# from custom_modules.tiling import process_tiling
+# from custom_modules.vectorize import process_vectorization
 
 
 
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-def upload_image(request):
-    serializer = ImageUploadSerializer(data=request.data)
-    if serializer.is_valid():
-        uploaded_image = serializer.save()
-        image_path = uploaded_image.image.path
+# @api_view(['POST'])
+# @parser_classes([MultiPartParser, FormParser])
+# def upload_image(request):
+#     serializer = ImageUploadSerializer(data=request.data)
+#     if serializer.is_valid():
+#         uploaded_image = serializer.save()
+#         image_path = uploaded_image.image.path
 
-        # Step 1: Process with your custom modules
-        processed_image = process_mosaic(image_path)
-        prediction_result = process_prediction(processed_image)
-        tiled_data = process_tiling(prediction_result)
-        geojson_result = process_vectorization(tiled_data)
+#         # Step 1: Process with your custom modules
+#         processed_image = process_mosaic(image_path)
+#         prediction_result = process_prediction(processed_image)
+#         tiled_data = process_tiling(prediction_result)
+#         geojson_result = process_vectorization(tiled_data)
 
-        return Response({"geojson": geojson_result})
-    return Response(serializer.errors, status=400)
+#         return Response({"geojson": geojson_result})
+#     return Response(serializer.errors, status=400)
 
 
 
@@ -91,39 +91,6 @@ def get_s3_signed_url_view(request):
         return JsonResponse({"error": "Failed to generate S3 presigned URL"}, status=500)
 
     return JsonResponse({"success": True, "url": presigned_url}, status=200)
-
-
-# -----------------------------------
-# ✅ Handle Input Data Storage
-# -----------------------------------
-class InputViewSet(viewsets.ModelViewSet):
-    serializer_class = InputSerializer
-    permission_classes = [AllowAny]
-
-    def get_queryset(self):
-        """Retrieve inputs for a specific user."""
-        user_id = self.request.query_params.get("user_id")
-        if user_id:
-            return Input.objects.filter(user_id=user_id)
-        return Input.objects.all()
-
-    def perform_create(self, serializer):
-        """Stores the uploaded model URL without processing."""
-        user_id = self.request.data.get("user_id")
-        input_type = self.request.data.get("input_type")
-        data_link = self.request.data.get("data_link")
-
-        if not user_id or not data_link:
-            return Response({"error": "user_id and data_link are required"}, status=400)
-
-        if Input.objects.filter(user_id=user_id, input_type=input_type, data_link=data_link).exists():
-            raise ValidationError({"detail": "This model/API/dataset already exists for this user."})
-
-        # ✅ Save Entry Without Processing
-        serializer.save(user_id=user_id, input_type=input_type, data_link=data_link)
-
-        print(f"✅ Successfully stored {input_type} for user {user_id}")
-        return Response(serializer.data, status=201)
 
 
 # -----------------------------------

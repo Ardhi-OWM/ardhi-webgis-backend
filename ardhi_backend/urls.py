@@ -1,16 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    InputViewSet, 
     SubscriptionViewSet, 
     ModelDatasetViewSet,
-    upload_image,
+    # upload_image,
     get_s3_signed_url_view 
 )
 
 router = DefaultRouter()
 router.register(r'models-datasets', ModelDatasetViewSet, basename='models-datasets')
-router.register(r'inputs', InputViewSet, basename='input')
 router.register(r'subscriptions', SubscriptionViewSet, basename='subscription')
 
 urlpatterns = [
