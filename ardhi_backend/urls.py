@@ -4,6 +4,7 @@ from .views import (
     InputViewSet, 
     SubscriptionViewSet, 
     ModelDatasetViewSet,
+    upload_image,
     get_s3_signed_url_view 
 )
 

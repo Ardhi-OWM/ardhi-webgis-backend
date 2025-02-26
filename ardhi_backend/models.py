@@ -34,4 +34,9 @@ class ModelDataset(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.type.capitalize()} - {self.user_id}"
+        return f"{self.name} - {self.user_id}"
+
+class UploadedImage(models.Model):
+    image=models.ImageField(upload_to='uploads/')
+    uploaded_at=models.DateTimeField(auto_now_add=True)        
+
