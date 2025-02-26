@@ -16,12 +16,65 @@ import os
 
 
 
+# settings.py
+import os
+from dotenv import load_dotenv  # Install python-dotenv if not already installed
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Base directory of your Django project
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Media files (uploaded files)
+# Create the media directory
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Directory where uploaded files are stored
+MEDIA_URL = '/media/'  # URL prefix for serving media files
+
+# Define paths using environment variables
+DATA_DIR = os.getenv('DATA_DIR', os.path.join(BASE_DIR, 'data'))
+MODEL_WEIGHTS_DIR = os.getenv('MODEL_WEIGHTS_DIR', os.path.join(BASE_DIR, 'model_weights'))
+
+# Specific paths
+UNET_MODEL_FILE = os.getenv('UNET_MODEL_FILE', os.path.join(MODEL_WEIGHTS_DIR, 'best_model.pth'))
+INPUT_RASTER_FOLDER = os.getenv('INPUT_RASTER_FOLDER', os.path.join(DATA_DIR, 'output', 'output_patches'))
+OUTPUT_MASK_FOLDER = os.getenv('OUTPUT_MASK_FOLDER', os.path.join(DATA_DIR, 'output', 'inferenced', 'mask'))
+OUTPUT_MOSAIC_FILE = os.getenv('OUTPUT_MOSAIC_FILE', os.path.join(DATA_DIR, 'output', 'inferenced', 'mosaic_mask', 'mosaic_mask.tif'))
+OUTPUT_VECTOR_FILE = os.getenv('OUTPUT_VECTOR_FILE', os.path.join(DATA_DIR, 'output', 'inferenced', 'vector', 'vector_inference.geojson'))
+
+
+
+
+
+
+
+"""
+
+
+# Base directory of your Django project
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Define paths for your data and model weights
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+MODEL_WEIGHTS_DIR = os.path.join(BASE_DIR, 'model_weights')
+
+# Specific paths
+UNET_MODEL_FILE = os.path.join(MODEL_WEIGHTS_DIR, 'best_model.pth')
+INPUT_RASTER_FOLDER = os.path.join(DATA_DIR, 'output', 'output_patches')
+OUTPUT_MASK_FOLDER = os.path.join(DATA_DIR, 'output', 'inferenced', 'mask')
+OUTPUT_MOSAIC_FILE = os.path.join(DATA_DIR, 'output', 'inferenced', 'mosaic_mask', 'mosaic_mask.tif')
+OUTPUT_VECTOR_FILE = os.path.join(DATA_DIR, 'output', 'inferenced', 'vector', 'vector_inference.geojson')
+
+"""
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 #BASE_DIR = Path(__file__).resolve().parent.parent
 
 #local
-BASE_DIR=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\django"
-MEDIA_URL ='/media/'
+#BASE_DIR=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\django"
+##MEDIA_URL ='/media/'
 MEDIA_ROOT=os.path.join(BASE_DIR,'media')
 
 

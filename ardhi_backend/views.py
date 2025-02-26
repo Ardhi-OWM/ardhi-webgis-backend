@@ -16,10 +16,130 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, parser_classes
 from django.core.files.storage import default_storage
 from .serializers import ImageUploadSerializer
+
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.core.files.base import ContentFile
+
 from custom_modules.mosaic import process_mosaic
-from custom_modules.predict_feature_pytorch import process_prediction
-from custom_modules.tiling import process_tiling
-from custom_modules.vectorize import process_vectorization
+from custom_modules.predict_feature_pytorch import predict_masks
+from custom_modules.tiling import generate_tiles,generate_image_patches
+from custom_modules.vectorize import raster_vector
+
+import os
+import json
+
+
+
+
+
+
+@csrf_exempt
+def upload_and_process_image(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        # Save the uploaded image
+        uploaded_file = request.FILES['image']
+        file_name = default_storage.save(uploaded_file.name, ContentFile(uploaded_file.read()))
+        file_path = default_storage.path(file_name)
+
+        # Process the image using the custom module
+        try:
+            # Step 1: Tile the image
+            
+            ### Generating image patches
+            tiles = generate_tiles(file_path, settings.INPUT_RASTER_FOLDER, "grid", size=256)
+            generate_image_patches(tiles, file_path, "image_tiled", output_folder=settings.INPUT_RASTER_FOLDER, size=256)
+
+            # Step 2: Predict features using PyTorch
+            predict_masks(settings.INPUT_RASTER_FOLDER, settings.OUTPUT_MASK_FOLDER, settings.UNET_MODEL_FILE)
+
+            # Step 3: Create a mosaic
+            process_mosaic(settings.OUTPUT_MASK_FOLDER, settings.OUTPUT_MOSAIC_FILE)
+
+            # Step 4: Vectorize the mosaic to GeoJSON
+            raster_vector(settings.OUTPUT_MOSAIC_FILE, settings.OUTPUT_VECTOR_FILE)
+
+            # Read the generated GeoJSON file
+            with open(settings.OUTPUT_VECTOR_FILE, 'r') as f:
+                geojson_data = json.load(f)
+
+            # Save the GeoJSON to a file (optional)
+            geojson_file_path = file_path.replace('.tif', '.geojson')
+            with open(geojson_file_path, 'w') as f:
+                json.dump(geojson_data, f)
+
+            # Return the GeoJSON as a response
+            return JsonResponse({'status': 'success', 'geojson': geojson_data})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    return JsonResponse({'status': 'error', 'message': 'No image uploaded'})
+
+"""
+@csrf_exempt
+def upload_and_process_image(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        # Save the uploaded image
+        uploaded_file = request.FILES['image']
+        file_name = default_storage.save(uploaded_file.name, ContentFile(uploaded_file.read()))
+        file_path = default_storage.path(file_name)
+
+        # Process the image using the custom module
+        try:
+            # Step 1: Tile the image
+            tiled_images = process_tile(file_path)
+            ###generating image patches
+            tiles = generate_tiles(input_file, output_grid_files, "grid", size=256)
+            generate_image_patches(tiles,input_file,"image_tiled",output_folder=output_tif_folder,size=256)
+
+
+            # Step 2: Predict features using PyTorch
+            #predicted_features = predict_features(tiled_images)
+
+            unet_model_file = r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\model_weights\best_model.pth"
+            input_raster_folder =r'C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\output_patches'
+            ##
+            output_mask_folder = r'C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\mask'
+            predict_masks(input_raster_folder, output_mask_folder, unet_model_file)
+
+            # Step 3: Create a mosaic
+            #mosaic_image = create_mosaic(predicted_features)
+
+            #example
+            input_mask_folder=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\mask"
+            output_mosaic_file=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\mosaic_mask\mosaic_mask.tif"
+            ##
+            process_mosaic(input_mask_folder,output_mosaic_file)
+
+            # Step 4: Vectorize the mosaic to GeoJSON
+            #geojson_data = vectorize_to_geojson(mosaic_image)
+
+            ## #location of the raster to be vectorised
+            input_file_path=r"C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\mosaic_mask\mosaic_mask.tif"
+            ## # name of the vector to be created
+            geojson_data=r'C:\Users\caleb\OneDrive\Desktop\private\projects\ardhi\example_backend\data\output\inferenced\vector\vector_inference.geojson'
+            
+            raster_vector(input_file_path,geojson_data)
+
+            # Save the GeoJSON to a file (optional)
+            geojson_file_path = file_path.replace('.tif', '.geojson')
+            with open(geojson_file_path, 'w') as f:
+                json.dump(geojson_data, f)
+
+            # Return the GeoJSON as a response
+            return JsonResponse({'status': 'success', 'geojson': geojson_data})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    return JsonResponse({'status': 'error', 'message': 'No image uploaded'})
+"""
+
+
+
+
 
 
 

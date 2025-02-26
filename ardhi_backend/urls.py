@@ -15,10 +15,13 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from django.conf import settings
+from django.conf.urls.static import static
 from .views import (
     InputViewSet, 
     SubscriptionViewSet, 
     APIEndpointViewSet,
+    upload_and_process_image,
     upload_image,
     get_s3_signed_url
 )
@@ -31,5 +34,10 @@ router.register(r'subscriptions', SubscriptionViewSet, basename='subscription')
 urlpatterns = [
     path('get-s3-url/', get_s3_signed_url, name='get_s3_url'),
     path('', include(router.urls)),
+    path('upload-image/', upload_and_process_image, name='upload_image'),
 ]
+
+# Serve media files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
